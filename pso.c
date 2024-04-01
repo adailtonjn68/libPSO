@@ -5,10 +5,10 @@
 #include <string.h>
 
 
-static inline int __pso_init_check_args(const pso_t *const pso,
-                                        const size_t n_axis,
-                                        const double limits[static n_axis][2],
-                                        const double params[static 3])
+inline int __pso_init_check_args(const pso_t *const pso,
+                                 const size_t n_axis,
+                                 const double limits[static n_axis][2],
+                                 const double params[static 3])
 {
     if (pso == nullptr) {
         fprintf(stderr, "ERROR: Invalid argumend pso\n");
@@ -34,8 +34,8 @@ static inline int __pso_init_check_args(const pso_t *const pso,
 }
 
 
-static inline int __pso_init_limits_ptr(pso_t *const pso,
-                                        const double limits[static pso->n_axis][2])
+inline int __pso_init_limits_ptr(pso_t *const pso,
+                                 const double limits[static pso->n_axis][2])
 {
     double (*_temp)[pso->n_axis][2] = malloc(sizeof(*_temp));
     if (_temp == nullptr) {
@@ -50,6 +50,15 @@ static inline int __pso_init_limits_ptr(pso_t *const pso,
 }
 
 
+/**
+ * @brief Initialize pso.
+ *
+ *
+ * @params pso Pointer to which the pso will be set up.
+ *
+ *
+ * @return status Integer indicating status (0: okay, else: failed)
+ */
 int pso_init(pso_t *const pso,
              const size_t n_axis, const double limits[static n_axis][2],
              const double params[static 3])
@@ -57,8 +66,7 @@ int pso_init(pso_t *const pso,
     int status = 0;
 
     /* Check for invalid arguments */
-    status = __pso_init_check_args(pso, n_axis,
-                                   limits, params);
+    status = __pso_init_check_args(pso, n_axis, limits, params);
     if (status) {
         return status;
     }
@@ -72,7 +80,8 @@ int pso_init(pso_t *const pso,
     /* Allocate memory for particles structs */
     pso->particles = malloc(sizeof(particle_t [pso->n_particles]));
     if (pso->particles == nullptr) {
-        fprintf(stderr, "ERROR: It was not possible to allocate memory for particles\n");
+        fprintf(stderr, "ERROR: It was not possible to allocate "
+                        "memory for particles\n");
         status = -ENOMEM;
         goto _error_particles;
     }
@@ -81,11 +90,10 @@ int pso_init(pso_t *const pso,
      * Initialize each particle by allocating memory to it, setting its position
      * randomly inside the limits and setting velocity to zero
      */
-    if (!pso_init_particles(pso, limits)) {
+    if (pso_init_particles(pso, limits)) {
         status = -ENOMEM;
         goto _error_particles_contents;
     }
-
 
     /* Pass input correction parameters to pso */
     pso->w = params[0];
@@ -123,6 +131,11 @@ _error_particles:
 }
 
 
+/**
+ * @brief Free memory allocated for pso
+ * @param pso Pointer to pso to be deallocated
+ * @return void
+ */
 void pso_free(pso_t *const pso)
 {
     free(pso->limits);
@@ -200,21 +213,33 @@ static bool pso_init_best_value(pso_t *const pso)
 }
 
 
-bool pso_init_particles(pso_t *const pso,
+/**
+ * @brief Initialize particles for PSO
+ *
+ * Memory is allocated for all particles position, velocity and best position.
+ *
+ * @param pso Pointer to pso to be initialized.
+ * @param limits Array with limits to each axis.
+ * @return error Code with error.
+ */
+int pso_init_particles(pso_t *const pso,
                         const double limits[static pso->n_axis][2])
 {
+    /* Check validity of inputs */
     if (pso == nullptr || limits == nullptr) {
         fprintf(stderr, "ERROR: passed invalid arguments to %s\n", __func__);
-        return false;
+        return -EINVAL;
     }
 
+    /* Allocate memory for particles */
     double (*_ptr)[pso->n_particles][3][pso->n_axis] = malloc(sizeof(*_ptr));
     if (_ptr == nullptr) {
         fprintf(stderr, "ERROR: It wasn't possible to allocate memory "
                         "for particle contents\n");
-        return false;
+        return -ENOMEM;
     }
 
+    /* Pass address of each particle's position, velocity and best position */
     for (size_t i = 0; i < pso->n_particles ; i++) {
         pso->particles[i].position = &(*_ptr)[i][0][0];
         pso->particles[i].velocity = &(*_ptr)[i][1][0];
@@ -226,10 +251,15 @@ bool pso_init_particles(pso_t *const pso,
     pso_init_particle_best_position(pso);
     pso_init_best_value(pso);
 
-    return true;
+    return 0;
 }
 
 
+/**
+ * @brief Print all positions.
+ * @param pso Pointer to pso
+ * @return void
+ */
 void pso_print_particles(const pso_t *const pso)
 {
     for (size_t i = 0; i < pso->n_particles; i++) {
@@ -255,9 +285,12 @@ void pso_update_particles(pso_t *const pso)
         _rand2 = ((double) rand()) / (double) RAND_MAX;
 
         for (size_t j = 0; j < pso->n_axis; j++) {
-
-            double _temp1 = pso->particles[i].best_position[j] - pso->particles[i].position[j];
-            double _temp2 = pso->global_best_position[j] - pso->particles[i].position[j];
+            /* Displacement related to its best position */
+            double _temp1 = pso->particles[i].best_position[j] -
+                            pso->particles[i].position[j];
+            /* Displacement relatede to swarm best postion */
+            double _temp2 = pso->global_best_position[j] -
+                            pso->particles[i].position[j];
 
             inertial = pso->w * pso->particles[i].velocity[j];
             self_confidence = pso->c1 * _rand1 * _temp1;
@@ -284,15 +317,13 @@ void pso_update_particles(pso_t *const pso)
             else if (pso->particles[i].position[j] < _min) {
                 pso->particles[i].position[j] = _min;
             }
-
-
         }
     }
 
 }
 
 
-void pso_find_best_global_particle(pso_t *const pso)
+static void pso_find_best_global_particle(pso_t *const pso)
 {
     double cost;
     for (size_t i = 0; i < pso->n_particles; i++) {
@@ -312,14 +343,18 @@ void pso_find_best_global_particle(pso_t *const pso)
             pso->global_best_value = cost;
             memcpy(pso->global_best_position, pso->particles[i].position,
                    sizeof(double [pso->n_axis]));
-
         }
     }
 }
 
 
-void pso_run(pso_t *const pso)
+int pso_run(pso_t *const pso)
 {
+    if (pso == nullptr) {
+        fprintf(stderr, "ERROR: Invalid argument to %s\n", __func__);
+        return -EINVAL;
+    }
+
     size_t i = 0;
     do {
         printf("Iteration %ld - \t", i);
@@ -335,5 +370,28 @@ void pso_run(pso_t *const pso)
 
         i++;
     } while (i <= pso->n_iterations);
+    return 0;
 }
 
+
+void pso_print_best_particle(const pso_t *const pso)
+{
+    if (pso == nullptr) {
+        fprintf(stderr, "ERROR: Invalid argument to  %s\n", __func__);
+    }
+
+    for (size_t i = 0; i < pso->n_axis - 1; i++) {
+        printf("%lf, ", pso->global_best_position[i]);
+    }
+    printf("%lf", pso->global_best_position[pso->n_axis - 1]);
+}
+
+
+void pso_print_best_value(const pso_t *const pso)
+{
+    if (pso == nullptr) {
+        fprintf(stderr, "ERROR: Invalid argument to  %s\n", __func__);
+    }
+
+    printf("%lf", pso->global_best_value);
+}

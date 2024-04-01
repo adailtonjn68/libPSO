@@ -1,3 +1,10 @@
+/*
+ * File: example01.c
+ * Author: Adailton Braga Junior
+ * E-mail: adailtonjn68@gmail.com
+ * Description: Minimize a two dimensional second order equation
+ */
+
 #include <stdio.h>
 #include <stdlib.h>
 #include <time.h>
@@ -47,6 +54,12 @@ int main(void)
     pso_run(&pso);
 
     pso_print_particles(&pso);
+
+    printf("**********************\nResult\nParticle: {");
+    pso_print_best_particle(&pso);
+    printf("}\nError: ");
+    pso_print_best_value(&pso);
+    printf("\n**********************\n");
 
     pso_free(&pso);
 
