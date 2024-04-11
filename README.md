@@ -1,8 +1,8 @@
-# LIBPSO
+# libPSO
 
 ## Description
 
-LIBPSO is library in C designed to provide an easy to use API to run Particle
+libPSO is library in C designed to provide an easy to use API to run Particle
 Swarm Optimization (PSO). Also, it was created with the new C23 standard in mind.
 
 

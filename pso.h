@@ -41,10 +41,12 @@ int pso_init(pso_t *const pso, const size_t n_axis,
 void pso_free(pso_t *const pso);
 [[nodiscard]]
 int pso_init_particles(pso_t *const pso,
-                        const double limits[static pso->n_axis][2]);
-void pso_print_particles(const pso_t *const pso);
+                       const double limits[static pso->n_axis][2]);
+int pso_print_particles(const pso_t *const pso);
+int pso_find_best_global_particle(pso_t *const pso);
 int pso_run(pso_t *const pso);
-void pso_print_best_particle(const pso_t *const pso);
-void pso_print_best_value(const pso_t *const pso);
+int pso_update_particles(pso_t *const pso);
+int pso_print_best_particle(const pso_t *const pso);
+int pso_print_best_value(const pso_t *const pso);
 
 #endif // !PSO_H_
